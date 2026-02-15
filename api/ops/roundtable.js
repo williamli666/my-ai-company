@@ -1,35 +1,44 @@
 import { createClient } from '@supabase/supabase-js';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-
-  // 1. 定义 Agent 声音 (Voices)
-  const VOICES = {
-    boss: { displayName: 'Boss', tone: '结果导向，直接', directive: '你是个心急的项目经理，关心进度和利润。' },
-    analyst: { displayName: 'Analyst', tone: '客观，看证据', directive: '你是个数据分析师，除非有数据支持，否则你持怀疑态度。' }
-  };
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
-    // 2. 模拟一场对话 (这里未来会调用 LLM API)
-    const topic = "今日市场波动性分析";
-    const dialogue = [
-      { speaker: 'analyst', text: "数据表明 BTC 波动率在上升，这可能是一个入场信号。" },
-      { speaker: 'boss', text: "好，重点是风险。我们现在的止损策略能覆盖这种波动吗？" }
-    ];
+    // 【核心改动：查询记忆】从笔记本里取最近的 3 条经验
+    const { data: memories } = await supabase
+      .from('ops_agent_memory')
+      .select('content')
+      .order('created_at', { ascending: false })
+      .limit(3);
 
-    // 3. 记录对话事件到 ops_agent_events
-    for (const turn of dialogue) {
-      await supabase.from('ops_agent_events').insert([{
-        agent_id: turn.speaker,
-        kind: 'roundtable_talk',
-        title: topic,
-        summary: turn.text
-      }]);
-    }
+    // 把记忆拼接成一段话
+    const memoryContext = memories?.length 
+      ? `\n以下是你之前的经验教训，请在对话中参考：\n${memories.map(m => "- " + m.content).join('\n')}`
+      : "";
 
-    // 4. (进阶) 提炼记忆：将对话总结存入 ops_agent_memory
-    
-    return res.status(200).json({ success: true, message: 'Roundtable completed' });
+    const topic = "今日量化交易策略讨论";
+
+    // 【核心改动：注入提示词】让 Gemini 带着记忆思考
+    const systemPrompt = `你正在模拟 AI 公司的内部会议。
+    角色: Boss (简练)、Analyst (严谨)。
+    主题: ${topic}。${memoryContext}
+    要求: 请生成一段对话，每人一句，每句不超过 120 字。`;
+
+    const result = await model.generateContent(systemPrompt);
+    const responseText = result.response.text();
+
+    // 存入事件流
+    await supabase.from('ops_agent_events').insert([{
+      agent_id: 'roundtable',
+      kind: 'gemini_chat_with_memory', // 改个名字标记这是有记忆的聊天
+      title: topic,
+      summary: responseText
+    }]);
+
+    return res.status(200).json({ success: true, content: responseText });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
