@@ -9,7 +9,7 @@ async function main() {
   console.log('💓 正在执行系统巡检...');
 
   // 1. 记忆提炼：将对话转为知识
-  const { data: events } = await supabase.from('ops_agent_events').select('*').eq('kind', 'gemini_chat').limit(3);
+  const { data: events } = await supabase.from('ops_agent_events').select('*').eq('kind', 'gemini_chat').limit(1);
   if (events && events.length > 0) {
     console.log('🧠 正在提炼对话记忆...');
     const result = await model.generateContent(`提炼核心量化观点：${events.map(e => e.summary).join('; ')}`);
