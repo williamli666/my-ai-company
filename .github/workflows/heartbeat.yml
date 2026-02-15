@@ -2,9 +2,8 @@ name: Agent Heartbeat
 
 on:
   schedule:
-    # 每 5 分钟触发一次 (Cron 表达式)
     - cron: '*/5 * * * *'
-  workflow_dispatch: # 允许你手动在 GitHub 页面点击按钮触发
+  workflow_dispatch:
 
 jobs:
   pulse:
@@ -22,8 +21,7 @@ jobs:
         run: npm install @supabase/supabase-js @google/generative-ai
 
       - name: Run Heartbeat Logic
-        # 这里直接运行我们之前的测试脚本，或者专门的心跳脚本
-       run: node pulse.js
+        run: node pulse.js  # 确保这里已经改为 pulse.js
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
