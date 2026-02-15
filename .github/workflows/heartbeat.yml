@@ -1,28 +1,23 @@
 name: Agent Heartbeat
-
 on:
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
-
 jobs:
   pulse:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-         uses: actions/checkout@v3
-
+        uses: actions/checkout@v3
       - name: Set up Node.js
-         uses: actions/setup-node@v3
-         with:
-           node-version: '20'
-
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
       - name: Install dependencies
-         run: npm install @supabase/supabase-js @google/generative-ai
-
+        run: npm install @supabase/supabase-js @google/generative-ai
       - name: Run Heartbeat Logic
-         run: node pulse.js  # 确保这里已经改为 pulse.js
-         env:
+        run: node pulse.js
+        env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
