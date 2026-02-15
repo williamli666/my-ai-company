@@ -30,7 +30,7 @@ async function main() {
       
       const insight = completion.choices[0].message.content;
       await supabase.from('ops_agent_memory').insert([{ 
-        agent_id: 'analyst', 
+        agent_id: 'quant-bot-01', // 统一使用你的数据库 ID
         content: insight, 
         type: 'insight', 
         confidence: 1.0 
@@ -59,33 +59,41 @@ async function main() {
       messages: [
         { 
           role: "system", 
-          content: `你是一个专业的量化交易研究员。你的长期目标是：${currentGoal}。请以此为核心产生一个具体、可落地的任务提案。` 
+          content: `你是一个专业的量化交易研究员。你的长期目标是：${currentGoal}。请以此为核心产生一个具体、可落地的任务提案。要求返回标准的 JSON 格式。` 
         },
         { 
           role: "user", 
-          content: '请返回一个 JSON 格式的提案，包含 should_propose(true), title, reason 三个字段。' 
+          content: '请返回 JSON: {"should_propose": true, "title": "...", "reason": "..."}' 
         }
-      ],
-      response_format: { type: "json_object" } // 确保 DeepSeek 返回标准的 JSON
+      ]
     });
 
-    const decision = JSON.parse(initiative.choices[0].message.content.replace(/```json|```/g, ''));
+    // 强化的 JSON 解析逻辑
+    let decision;
+    try {
+      const rawContent = initiative.choices[0].message.content;
+      const cleanJson = rawContent.replace(/```json|```/g, '').trim();
+      decision = JSON.parse(cleanJson);
+    } catch (e) {
+      console.log('⚠️ JSON 解析异常，DeepSeek 返回内容：', initiative.choices[0].message.content);
+      decision = { should_propose: false };
+    }
     
-    if (decision.should_propose) {
+    if (decision && decision.should_propose) {
       await supabase.from('ops_mission_proposals').insert([{ 
-        agent_id: 'analyst', 
+        agent_id: 'quant-bot-01', // 确保 ID 匹配
         title: decision.title, 
         summary: decision.reason, 
         status: 'pending', 
         is_initiative: true 
       }]);
-      console.log(`💡 DeepSeek 发起了一个指向目标的提案: ${decision.title}`);
+      console.log(`💡 提案已成功写入数据库: ${decision.title}`);
     }
 
     console.log('✨ 巡检完成。');
 
   } catch (error) {
-    console.error('❌ 巡检过程中遇到错误:', error.message);
+    console.error('❌ 巡检遇到致命错误:', error.message);
   }
 }
 
