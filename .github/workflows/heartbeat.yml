@@ -23,7 +23,7 @@ jobs:
 
       - name: Run Heartbeat Logic
         # 这里直接运行我们之前的测试脚本，或者专门的心跳脚本
-        run: node test-proposal.js
+       run: node pulse.js
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
